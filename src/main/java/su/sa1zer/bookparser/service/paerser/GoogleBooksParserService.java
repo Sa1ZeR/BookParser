@@ -3,7 +3,6 @@ package su.sa1zer.bookparser.service.paerser;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -16,15 +15,8 @@ import su.sa1zer.bookparser.utils.IOUtils;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URLConnection;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @Slf4j
@@ -46,7 +38,6 @@ public class GoogleBooksParserService extends BaseParserService{
 
     @Override
     public void parseBooks() {
-        //AtomicInteger amount = new AtomicInteger(0);
         for (Character character : ALPHA) {
             parseAlpha(character);
         }
@@ -112,7 +103,6 @@ public class GoogleBooksParserService extends BaseParserService{
                         }
                     }
 
-                    //amount.addAndGet(1);
                     singleExecutor.execute(() ->
                             addBook(title, desc, year, img, pageCount, ISBN, ParserType.GOOGLE_BOOKS, authors,
                                     genres, new ArrayList<>()));
@@ -145,10 +135,5 @@ public class GoogleBooksParserService extends BaseParserService{
         for(int i = '0'; i <= '9'; i++) {
             ALPHA.add((char) i);
         }
-    }
-
-    @RequiredArgsConstructor
-    public abstract class GoogleRunnable implements Runnable {
-        public final Character character;
     }
 }

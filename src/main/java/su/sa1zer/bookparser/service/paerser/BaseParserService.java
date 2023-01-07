@@ -3,7 +3,6 @@ package su.sa1zer.bookparser.service.paerser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import su.sa1zer.bookparser.entity.*;
 import su.sa1zer.bookparser.service.AuthorService;
@@ -45,6 +44,17 @@ public abstract class BaseParserService {
     public abstract ParserType getParserType();
 
     public abstract void parseBooks();
+
+    /**
+     * template method
+     */
+    public void executeParse() {
+        log.info(String.format("Parser %s successfully started", getParserType()));
+
+        parseBooks();
+
+        log.info(String.format("Parser %s successfully finished", getParserType()));
+    }
 
     @Transactional()
     public void addBook(String name, String desc, Integer year, String img, Integer pages, Long ISBN, ParserType type,
