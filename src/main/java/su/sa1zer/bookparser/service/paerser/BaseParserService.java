@@ -3,8 +3,7 @@ package su.sa1zer.bookparser.service.paerser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import su.sa1zer.bookparser.entity.*;
 import su.sa1zer.bookparser.service.AuthorService;
@@ -13,16 +12,19 @@ import su.sa1zer.bookparser.service.GenreService;
 import su.sa1zer.bookparser.service.TagService;
 
 import javax.annotation.PostConstruct;
-import javax.persistence.LockModeType;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
 public abstract class BaseParserService {
+
+    private Pattern NUMBER_PATTERN = Pattern.compile("\\d*");
 
     protected static final ExecutorService singleExecutor = Executors.newSingleThreadExecutor();
     protected final BookService bookService;
@@ -44,7 +46,7 @@ public abstract class BaseParserService {
 
     public abstract void parseBooks();
 
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected synchronized void addBook(String name, String desc, Integer year, String img, Integer pages, Long ISBN, ParserType type,
                            List<String> authors, List<String> genres, List<String> tags) {
 
@@ -82,6 +84,23 @@ public abstract class BaseParserService {
     @Transactional
     public Set<Genre> parseGenres(List<String> genresList) {
         return genresList.stream().map(genreService::getOrCreateGenre).collect(Collectors.toSet());
+    }
+
+    /**
+     * universal fix for getting date from specific string
+     * @return date
+     */
+    public int getYearFromString(String date) {
+        Matcher matcher = NUMBER_PATTERN.matcher(date);
+        if(matcher.find()) {
+            StringBuilder result = new StringBuilder(matcher.group());
+            System.out.println(matcher.group());
+            while (result.length() < 4) {
+                result.append(0);
+            }
+            return Integer.parseInt(result.toString());
+        }
+        return 0;
     }
 
 }
