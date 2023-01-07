@@ -3,6 +3,7 @@ package su.sa1zer.bookparser.repostory;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.jpa.impl.JPAQuery;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.repository.EntityGraph;
 import su.sa1zer.bookparser.entity.Book;
 import su.sa1zer.bookparser.entity.QAuthor;
 import su.sa1zer.bookparser.payload.request.BookFilterRequest;
@@ -20,6 +21,7 @@ public class FilterBookRepositoryImpl implements FilterBookRepository {
     private final EntityManager entityManager;
 
     @Override
+    @EntityGraph(attributePaths = {"authors", "tags", "genres"})
     public List<Book> findAllByFilter(BookFilterRequest request) {
         Predicate predicate = QPredicates.builder()
                 .add(request.getTitle(), book.name::containsIgnoreCase)

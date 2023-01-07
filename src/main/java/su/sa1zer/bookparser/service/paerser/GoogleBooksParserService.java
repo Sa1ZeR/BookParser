@@ -5,22 +5,25 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import su.sa1zer.bookparser.entity.ParserType;
 import su.sa1zer.bookparser.service.AuthorService;
 import su.sa1zer.bookparser.service.BookService;
 import su.sa1zer.bookparser.service.GenreService;
 import su.sa1zer.bookparser.service.TagService;
+import su.sa1zer.bookparser.utils.IOUtils;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLConnection;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
@@ -45,67 +48,79 @@ public class GoogleBooksParserService extends BaseParserService{
     public void parseBooks() {
         //AtomicInteger amount = new AtomicInteger(0);
         for (Character character : ALPHA) {
-            int startIndex = 0;
-            while (true) {
-                HttpRequest request = null;
-                try {
-                    request = HttpRequest.newBuilder().uri(
-                            new URI(String.format(MAIN_URL + "?q=%s&maxResults=%s&startIndex=%s", character, RESULT_PER_PAGE, startIndex))).GET().build();
-                } catch (URISyntaxException e) {
-                    log.error(e.getMessage(), e);
-                    return;
-                }
-                HttpClient client = HttpClient.newBuilder().build();
-                try {
-                    HttpResponse<String> send = client.send(request, HttpResponse.BodyHandlers.ofString());
-                    if (send.statusCode() != 200)
-                        break;
+            parseAlpha(character);
+        }
+    }
 
-                    JsonObject asJsonObject = JsonParser.parseString(send.body()).getAsJsonObject();
+    @Async
+    public void parseAlpha(Character character) {
+        int startIndex = 0;
+        while (true) {
 
-                    if (asJsonObject.has("totalItems") && asJsonObject.get("totalItems").getAsInt() == 0)
-                        break;
-                    if(asJsonObject.get("items") == null)
-                        break;
+//            HttpRequest request = null;
+//            try {
+//                request = HttpRequest.newBuilder().uri(
+//                        new URI(String.format(MAIN_URL + "?q=%s&maxResults=%s&startIndex=%s", character, RESULT_PER_PAGE, startIndex))).GET().build();
+//            } catch (URISyntaxException e) {
+//                log.error(e.getMessage(), e);
+//                return;
+//            }
+//            HttpClient client = HttpClient.newBuilder().build();
 
-                    JsonArray items = asJsonObject.get("items").getAsJsonArray();
-                    for (int i = 0; i < items.size(); i++) {
-                        JsonObject item = items.get(i).getAsJsonObject().get("volumeInfo").getAsJsonObject();
-                        String title = item.get("title").getAsString();
-                        String desc = item.get("description") != null ? item.get("description").getAsString() : null;
-                        int pageCount = item.get("pageCount") != null ? item.get("pageCount").getAsInt() : -1;
+            try {
+//                HttpResponse<String> send = client.send(request, HttpResponse.BodyHandlers.ofString());
+//                if (send.statusCode() != 200)
+//                    break;
+                HttpURLConnection urlConnection = (HttpURLConnection) IOUtils.newConnection(
+                        String.format(MAIN_URL + "?q=%s&maxResults=%s&startIndex=%s", character, RESULT_PER_PAGE, startIndex));
+                if(urlConnection.getResponseCode() / 100 != 2)
+                    break;
 
-                        List<String> genres = new ArrayList<>();
-                        String genre = item.get("categories") != null ? item.get("categories").getAsString() : null;
-                        if (genre != null && genre.length() <= 128)
-                            genres.add(genre);
+                String body = IOUtils.readInputStream(urlConnection.getInputStream());
 
-                        int year = item.get("publishedDate") != null ?
-                                Integer.parseInt(item.get("publishedDate").getAsString()
-                                        .replaceAll("\\?", "0").substring(0, 4)) : 1970;
-                        String img = item.has("imageLinks") ?
-                                item.get("imageLinks").getAsJsonObject().get("thumbnail").getAsString() : null;
+                JsonObject asJsonObject = JsonParser.parseString(body).getAsJsonObject();
 
-                        Long ISBN = item.get("industryIdentifiers") != null ? parseLong(item) : null;
+                if (asJsonObject.has("totalItems") && asJsonObject.get("totalItems").getAsInt() == 0)
+                    break;
+                if(asJsonObject.get("items") == null)
+                    break;
 
-                        List<String> authors = new ArrayList<>();
-                        if (item.get("authors") != null) {
-                            JsonArray authorsArr = item.get("authors").getAsJsonArray();
-                            for (int j = 0; j < authorsArr.size(); j++) {
-                                authors.add(authorsArr.get(j).getAsString());
-                            }
+                JsonArray items = asJsonObject.get("items").getAsJsonArray();
+                for (int i = 0; i < items.size(); i++) {
+                    JsonObject item = items.get(i).getAsJsonObject().get("volumeInfo").getAsJsonObject();
+                    String title = item.get("title").getAsString();
+                    String desc = item.get("description") != null ? item.get("description").getAsString() : null;
+                    int pageCount = item.get("pageCount") != null ? item.get("pageCount").getAsInt() : -1;
+
+                    List<String> genres = new ArrayList<>();
+                    String genre = item.get("categories") != null ? item.get("categories").getAsString() : null;
+                    if (genre != null && genre.length() <= 128)
+                        genres.add(genre);
+
+                    int year = item.get("publishedDate") != null ?
+                            getYearFromString(item.get("publishedDate").getAsString().substring(0, 4)) : 1970;
+                    String img = item.has("imageLinks") ?
+                            item.get("imageLinks").getAsJsonObject().get("thumbnail").getAsString() : null;
+
+                    Long ISBN = item.get("industryIdentifiers") != null ? parseLong(item) : null;
+
+                    List<String> authors = new ArrayList<>();
+                    if (item.get("authors") != null) {
+                        JsonArray authorsArr = item.get("authors").getAsJsonArray();
+                        for (int j = 0; j < authorsArr.size(); j++) {
+                            authors.add(authorsArr.get(j).getAsString());
                         }
-
-                        //amount.addAndGet(1);
-                        singleExecutor.execute(() ->
-                                addBook(title, desc, year, img, pageCount, ISBN, ParserType.GOOGLE_BOOKS, authors,
-                                        genres, new ArrayList<>()));
                     }
-                    startIndex += RESULT_PER_PAGE;
-                } catch (IOException | InterruptedException e) {
-                    log.error(e.getMessage(), e);
+
+                    //amount.addAndGet(1);
+                    //singleExecutor.execute(() ->
+                            addBook(title, desc, year, img, pageCount, ISBN, ParserType.GOOGLE_BOOKS, authors,
+                                    genres, new ArrayList<>());
                 }
+            } catch (IOException e) {
+                log.error(e.getMessage(), e);
             }
+            startIndex += RESULT_PER_PAGE;
         }
     }
 

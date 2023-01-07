@@ -78,6 +78,11 @@ public class BookService implements CrudService<BookDto, Long> {
         repository.save(book);
     }
 
+    @Transactional
+    public void saveAndFlush(Book book) {
+        repository.saveAndFlush(book);
+    }
+
     public boolean hasBookWithName(String name) {
         return repository.findByName(name).isPresent();
     }

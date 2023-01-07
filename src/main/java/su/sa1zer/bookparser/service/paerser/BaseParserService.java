@@ -46,8 +46,8 @@ public abstract class BaseParserService {
 
     public abstract void parseBooks();
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected synchronized void addBook(String name, String desc, Integer year, String img, Integer pages, Long ISBN, ParserType type,
+    @Transactional()
+    public void addBook(String name, String desc, Integer year, String img, Integer pages, Long ISBN, ParserType type,
                            List<String> authors, List<String> genres, List<String> tags) {
 
         if(bookService.hasBookWithName(name))
@@ -94,7 +94,6 @@ public abstract class BaseParserService {
         Matcher matcher = NUMBER_PATTERN.matcher(date);
         if(matcher.find()) {
             StringBuilder result = new StringBuilder(matcher.group());
-            System.out.println(matcher.group());
             while (result.length() < 4) {
                 result.append(0);
             }
