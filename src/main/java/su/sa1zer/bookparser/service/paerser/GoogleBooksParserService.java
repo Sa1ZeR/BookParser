@@ -113,9 +113,9 @@ public class GoogleBooksParserService extends BaseParserService{
                     }
 
                     //amount.addAndGet(1);
-                    //singleExecutor.execute(() ->
+                    singleExecutor.execute(() ->
                             addBook(title, desc, year, img, pageCount, ISBN, ParserType.GOOGLE_BOOKS, authors,
-                                    genres, new ArrayList<>());
+                                    genres, new ArrayList<>()));
                 }
             } catch (IOException e) {
                 log.error(e.getMessage(), e);
